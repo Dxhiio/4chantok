@@ -1,0 +1,39 @@
+{
+  "name": "4chantok",
+  "version": "0.1.0",
+  "description": "A privacy-conscious 4chan media viewer with a TikTok-style vertical feed.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "start": "next start"
+  },
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24.0.0"
+  },
+  "keywords": [
+    "4chan",
+    "media-viewer",
+    "nextjs",
+    "react",
+    "typescript",
+    "vertical-feed"
+  ],
+  "dependencies": {
+    "next": "^16.2.6",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "zustand": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.6",
+    "typescript": "^5.9.3"
+  }
+}
