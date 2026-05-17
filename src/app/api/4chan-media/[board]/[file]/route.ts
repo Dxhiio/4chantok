@@ -4,10 +4,10 @@ const VALID_BOARD = /^[a-z0-9]+$/i;
 const VALID_FILE = /^\d+(s\.jpg|\.(jpg|jpeg|png|gif|webm))$/i;
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     board: string;
     file: string;
-  };
+  }>;
 };
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ function copyHeader(source: Headers, target: Headers, name: string) {
 }
 
 export async function GET(request: NextRequest, context: RouteContext) {
-  const { board, file } = context.params;
+  const { board, file } = await context.params;
 
   if (!VALID_BOARD.test(board) || !VALID_FILE.test(file)) {
     return NextResponse.json({ error: "Invalid media path" }, { status: 400 });

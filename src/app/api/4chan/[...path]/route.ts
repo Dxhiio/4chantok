@@ -4,14 +4,14 @@ import { upstreamFourChanJson } from "@/server/fourChanProxy";
 export const dynamic = "force-dynamic";
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     path?: string[];
-  };
+  }>;
 };
 
 export async function GET(_request: NextRequest, context: RouteContext) {
   try {
-    const path = context.params.path ?? [];
+    const { path = [] } = await context.params;
     const payload = await upstreamFourChanJson(path);
 
     return NextResponse.json(payload, {
