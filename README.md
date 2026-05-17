@@ -9,6 +9,7 @@ A privacy-conscious 4chan media viewer with a TikTok-style vertical feed.
 - Browse available 4chan boards via the public JSON API.
 - View a visual thread catalog with thumbnail-backed cards.
 - Open a thread in a vertical scroll-snap media feed.
+- Mobile-first flow for phones: Boards → Threads → fullscreen Feed.
 - Show only media posts by default.
 - Optional toggle to include text-only posts in the feed.
 - Autoplay WebM videos when visible.

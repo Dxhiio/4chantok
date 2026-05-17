@@ -1,20 +1,35 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { BoardSelector } from "@/components/boards/BoardSelector";
 import { ThreadCatalog } from "@/components/catalog/ThreadCatalog";
 import { TikTokScroller } from "@/components/feed/TikTokScroller";
 import { useThreadPosts } from "@/features/thread/useThreadPosts";
 import { useAppStore } from "@/store/useAppStore";
 
+type MobileStage = "boards" | "catalog" | "viewer";
+
 export default function HomePage() {
   const currentBoard = useAppStore((state) => state.currentBoard);
   const currentThread = useAppStore((state) => state.currentThread);
   const showTextOnlyMessages = useAppStore((state) => state.showTextOnlyMessages);
   const setShowTextOnlyMessages = useAppStore((state) => state.setShowTextOnlyMessages);
+  const [mobileStage, setMobileStage] = useState<MobileStage>("boards");
   const { isLoading, error } = useThreadPosts(currentBoard?.board, currentThread?.no);
 
+  useEffect(() => {
+    if (currentThread) {
+      setMobileStage("viewer");
+      return;
+    }
+
+    if (currentBoard) {
+      setMobileStage("catalog");
+    }
+  }, [currentBoard, currentThread]);
+
   return (
-    <main className="appShell">
+    <main className="appShell" data-mobile-stage={mobileStage}>
       <aside className="sidebar" aria-label="Boards">
         <header className="brandBlock">
           <p className="eyebrow">4chan media explorer</p>
@@ -50,6 +65,35 @@ export default function HomePage() {
         {error ? <div className="emptyState errorText">{error}</div> : null}
         {!isLoading && !error ? <TikTokScroller /> : null}
       </section>
+
+      <nav className="mobileNav" aria-label="Mobile navigation">
+        <button
+          className="mobileNavButton"
+          data-active={mobileStage === "boards"}
+          type="button"
+          onClick={() => setMobileStage("boards")}
+        >
+          Boards
+        </button>
+        <button
+          className="mobileNavButton"
+          data-active={mobileStage === "catalog"}
+          disabled={!currentBoard}
+          type="button"
+          onClick={() => setMobileStage("catalog")}
+        >
+          Threads
+        </button>
+        <button
+          className="mobileNavButton"
+          data-active={mobileStage === "viewer"}
+          disabled={!currentThread}
+          type="button"
+          onClick={() => setMobileStage("viewer")}
+        >
+          Feed
+        </button>
+      </nav>
     </main>
   );
 }
