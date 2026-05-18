@@ -12,10 +12,25 @@ type MediaSlideProps = {
 
 type PlaybackState = "idle" | "loading" | "playing" | "blocked" | "error";
 
+function formatTime(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "0:00";
+
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60)
+    .toString()
+    .padStart(2, "0");
+
+  return `${minutes}:${remainingSeconds}`;
+}
+
 export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
   const slideRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
+  const [volume, setVolume] = useState(1);
+  const [isUserPaused, setIsUserPaused] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [isLocallyVisible, setIsLocallyVisible] = useState(false);
   const [playbackState, setPlaybackState] = useState<PlaybackState>("idle");
   const media = item.media;
@@ -23,30 +38,35 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
   const shouldLoadMedia = shouldPlay;
 
   const primeVideoForAutoplay = useCallback(
-    (video: HTMLVideoElement) => {
+    (video: HTMLVideoElement, nextMuted = muted, nextVolume = volume) => {
       video.defaultMuted = true;
-      video.muted = muted;
+      video.muted = nextMuted;
+      video.volume = nextVolume;
       video.playsInline = true;
       video.autoplay = true;
       video.loop = true;
-      video.setAttribute("muted", "");
+      if (nextMuted) {
+        video.setAttribute("muted", "");
+      } else {
+        video.removeAttribute("muted");
+      }
       video.setAttribute("playsinline", "");
       video.setAttribute("autoplay", "");
     },
-    [muted],
+    [muted, volume],
   );
 
-  const attemptPlayback = useCallback(async () => {
+  const attemptPlayback = useCallback(async (force = false, mutedOverride = muted) => {
     const video = videoRef.current;
     if (!video || media?.kind !== "video") return;
 
-    if (!shouldPlay) {
+    if (!shouldPlay || (!force && isUserPaused)) {
       video.pause();
       setPlaybackState("idle");
       return;
     }
 
-    primeVideoForAutoplay(video);
+    primeVideoForAutoplay(video, mutedOverride, volume);
     setPlaybackState(video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA ? "idle" : "loading");
 
     if (video.readyState === HTMLMediaElement.HAVE_NOTHING) {
@@ -69,7 +89,7 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
         setPlaybackState("blocked");
       }
     }
-  }, [media?.kind, primeVideoForAutoplay, shouldPlay]);
+  }, [isUserPaused, media?.kind, muted, primeVideoForAutoplay, shouldPlay, volume]);
 
   useEffect(() => {
     void attemptPlayback();
@@ -106,6 +126,84 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!shouldPlay) {
+      setIsUserPaused(false);
+    }
+  }, [shouldPlay]);
+
+  const togglePlayPause = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || media?.kind !== "video") return;
+
+    if (video.paused) {
+      setIsUserPaused(false);
+      void attemptPlayback(true);
+      return;
+    }
+
+    video.pause();
+    setIsUserPaused(true);
+    setPlaybackState("idle");
+  }, [attemptPlayback, media?.kind]);
+
+  const toggleMute = useCallback(() => {
+    const video = videoRef.current;
+    const nextMuted = !muted;
+
+    setMuted(nextMuted);
+
+    if (video) {
+      video.muted = nextMuted;
+      if (nextMuted) {
+        video.setAttribute("muted", "");
+      } else {
+        video.removeAttribute("muted");
+      }
+    }
+
+    if (!nextMuted) {
+      void attemptPlayback(true, nextMuted);
+    }
+  }, [attemptPlayback, muted]);
+
+  const handleVolumeChange = useCallback(
+    (nextVolume: number) => {
+      const clampedVolume = Math.min(Math.max(nextVolume, 0), 1);
+      const video = videoRef.current;
+
+      setVolume(clampedVolume);
+      setMuted(clampedVolume === 0);
+
+      if (video) {
+        video.volume = clampedVolume;
+        video.muted = clampedVolume === 0;
+        if (clampedVolume === 0) {
+          video.setAttribute("muted", "");
+        } else {
+          video.removeAttribute("muted");
+        }
+      }
+
+      if (clampedVolume > 0) {
+        void attemptPlayback(true, false);
+      }
+    },
+    [attemptPlayback],
+  );
+
+  const handleSeek = useCallback(
+    (nextTime: number) => {
+      const video = videoRef.current;
+      if (!video || !Number.isFinite(duration) || duration <= 0) return;
+
+      const clampedTime = Math.min(Math.max(nextTime, 0), duration);
+      video.currentTime = clampedTime;
+      setCurrentTime(clampedTime);
+    },
+    [duration],
+  );
+
   if (!media) return null;
 
   const caption = item.comment || media.filename;
@@ -130,8 +228,19 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
             preload="metadata"
             onCanPlay={() => void attemptPlayback()}
             onLoadedData={() => void attemptPlayback()}
+            onLoadedMetadata={(event) => {
+              setDuration(event.currentTarget.duration);
+              setCurrentTime(event.currentTarget.currentTime);
+            }}
+            onDurationChange={(event) => setDuration(event.currentTarget.duration)}
+            onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
+            onPlay={() => setPlaybackState("playing")}
+            onPause={() => {
+              if (shouldPlay && !isUserPaused) return;
+              setPlaybackState("idle");
+            }}
             onError={() => setPlaybackState("error")}
-            onClick={() => setMuted((value) => !value)}
+            onClick={togglePlayPause}
           />
         ) : media.kind === "gif" ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -155,10 +264,7 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
             <button
               className="iconButton"
               type="button"
-              onClick={() => {
-                setMuted((value) => !value);
-                void attemptPlayback();
-              }}
+              onClick={toggleMute}
             >
               {muted ? "Unmute" : "Mute"}
             </button>
@@ -170,6 +276,46 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
           ) : null}
         </div>
       </div>
+
+      {media.kind === "video" && shouldLoadMedia ? (
+        <div className="mediaPlayer" onClick={(event) => event.stopPropagation()}>
+          <div className="mediaPlayerRow">
+            <button className="playerButton" type="button" onClick={togglePlayPause}>
+              {playbackState === "playing" && !isUserPaused ? "Pause" : "Play"}
+            </button>
+            <span className="timeLabel">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
+            <button className="playerButton" type="button" onClick={toggleMute}>
+              {muted ? "Muted" : "Sound"}
+            </button>
+          </div>
+
+          <input
+            className="seekControl"
+            type="range"
+            min={0}
+            max={Number.isFinite(duration) && duration > 0 ? duration : 0}
+            step="0.1"
+            value={Math.min(currentTime, Number.isFinite(duration) && duration > 0 ? duration : currentTime)}
+            aria-label="Seek video"
+            onChange={(event) => handleSeek(Number(event.currentTarget.value))}
+          />
+
+          <label className="volumeControl">
+            <span>Volume</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step="0.05"
+              value={muted ? 0 : volume}
+              aria-label="Video volume"
+              onChange={(event) => handleVolumeChange(Number(event.currentTarget.value))}
+            />
+          </label>
+        </div>
+      ) : null}
     </article>
   );
 }

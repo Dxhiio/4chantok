@@ -225,6 +225,56 @@ button { cursor: pointer; }
   background: rgba(0, 0, 0, 0.52);
   text-decoration: none;
 }
+.mediaPlayer {
+  position: absolute;
+  z-index: 8;
+  right: 1.25rem;
+  bottom: 1rem;
+  left: 1.25rem;
+  display: grid;
+  gap: 0.55rem;
+  max-width: min(44rem, calc(100% - 2.5rem));
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1rem;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(16px);
+  pointer-events: auto;
+}
+.mediaPlayerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.playerButton {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  padding: 0.45rem 0.7rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.timeLabel {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.seekControl,
+.volumeControl input {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.volumeControl {
+  display: grid;
+  grid-template-columns: auto minmax(6rem, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.75rem;
+}
 .textCard {
   width: min(42rem, calc(100% - 2rem));
   border: 1px solid var(--border);
@@ -428,7 +478,7 @@ button { cursor: pointer; }
 
   .slideOverlay {
     align-items: flex-end;
-    padding: 7rem 1rem calc(env(safe-area-inset-bottom) + 6rem);
+    padding: 7rem 1rem calc(env(safe-area-inset-bottom) + 10rem);
   }
 
   .slideCopy {
@@ -452,6 +502,28 @@ button { cursor: pointer; }
     padding: 0.65rem 0.8rem;
     border-radius: 999px;
     font-size: 0.78rem;
+  }
+
+  .mediaPlayer {
+    right: 0.8rem;
+    bottom: calc(env(safe-area-inset-bottom) + 4.5rem);
+    left: 0.8rem;
+    max-width: none;
+    padding: 0.65rem;
+    border-radius: 1rem;
+  }
+
+  .playerButton {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.74rem;
+  }
+
+  .timeLabel {
+    font-size: 0.72rem;
+  }
+
+  .volumeControl {
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
   .mobileNav {
