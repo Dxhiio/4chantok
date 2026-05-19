@@ -27,10 +27,12 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
   const slideRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const singleTapTimerRef = useRef<number | null>(null);
+  const playerHideTimerRef = useRef<number | null>(null);
   const lastTapRef = useRef<{ at: number; side: "left" | "right" } | null>(null);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(0.1);
   const [isUserPaused, setIsUserPaused] = useState(false);
+  const [isPlayerVisible, setIsPlayerVisible] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isLocallyVisible, setIsLocallyVisible] = useState(false);
@@ -139,29 +141,61 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
       if (singleTapTimerRef.current !== null) {
         window.clearTimeout(singleTapTimerRef.current);
       }
+      if (playerHideTimerRef.current !== null) {
+        window.clearTimeout(playerHideTimerRef.current);
+      }
     };
   }, []);
+
+  const schedulePlayerHide = useCallback(() => {
+    if (playerHideTimerRef.current !== null) {
+      window.clearTimeout(playerHideTimerRef.current);
+    }
+
+    if (!shouldLoadMedia || media?.kind !== "video" || playbackState !== "playing" || isUserPaused) {
+      setIsPlayerVisible(true);
+      return;
+    }
+
+    playerHideTimerRef.current = window.setTimeout(() => {
+      setIsPlayerVisible(false);
+      playerHideTimerRef.current = null;
+    }, 2_200);
+  }, [isUserPaused, media?.kind, playbackState, shouldLoadMedia]);
+
+  const revealPlayer = useCallback(() => {
+    setIsPlayerVisible(true);
+    schedulePlayerHide();
+  }, [schedulePlayerHide]);
+
+  useEffect(() => {
+    if (media?.kind !== "video" || !shouldLoadMedia) return;
+    schedulePlayerHide();
+  }, [media?.kind, schedulePlayerHide, shouldLoadMedia]);
 
   const togglePlayPause = useCallback(() => {
     const video = videoRef.current;
     if (!video || media?.kind !== "video") return;
 
     if (video.paused) {
+      revealPlayer();
       setIsUserPaused(false);
       void attemptPlayback(true);
       return;
     }
 
+    revealPlayer();
     video.pause();
     setIsUserPaused(true);
     setPlaybackState("idle");
-  }, [attemptPlayback, media?.kind]);
+  }, [attemptPlayback, media?.kind, revealPlayer]);
 
   const toggleMute = useCallback(() => {
     const video = videoRef.current;
     const nextMuted = !muted;
 
     setMuted(nextMuted);
+    revealPlayer();
 
     if (video) {
       video.muted = nextMuted;
@@ -175,12 +209,13 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
     if (!nextMuted) {
       void attemptPlayback(true, nextMuted);
     }
-  }, [attemptPlayback, muted]);
+  }, [attemptPlayback, muted, revealPlayer]);
 
   const handleVolumeChange = useCallback(
     (nextVolume: number) => {
       const clampedVolume = Math.min(Math.max(nextVolume, 0), 1);
       const video = videoRef.current;
+      revealPlayer();
 
       setVolume(clampedVolume);
       setMuted(clampedVolume === 0);
@@ -199,7 +234,7 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
         void attemptPlayback(true, false);
       }
     },
-    [attemptPlayback],
+    [attemptPlayback, revealPlayer],
   );
 
   const handleSeek = useCallback(
@@ -207,11 +242,12 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
       const video = videoRef.current;
       if (!video || !Number.isFinite(duration) || duration <= 0) return;
 
+      revealPlayer();
       const clampedTime = Math.min(Math.max(nextTime, 0), duration);
       video.currentTime = clampedTime;
       setCurrentTime(clampedTime);
     },
-    [duration],
+    [duration, revealPlayer],
   );
 
   const seekBy = useCallback(
@@ -236,6 +272,7 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
       const isDoubleTap = Boolean(previousTap && previousTap.side === side && now - previousTap.at <= 280);
 
       if (isDoubleTap) {
+        revealPlayer();
         if (singleTapTimerRef.current !== null) {
           window.clearTimeout(singleTapTimerRef.current);
           singleTapTimerRef.current = null;
@@ -253,11 +290,12 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
       }
 
       singleTapTimerRef.current = window.setTimeout(() => {
+        revealPlayer();
         togglePlayPause();
         singleTapTimerRef.current = null;
       }, 285);
     },
-    [media?.kind, seekBy, togglePlayPause],
+    [media?.kind, revealPlayer, seekBy, togglePlayPause],
   );
 
   if (!media) return null;
@@ -265,7 +303,13 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
   const caption = item.comment || media.filename;
 
   return (
-    <article ref={slideRef} className="feedSlide" data-feed-index={index} aria-label={`Post #${item.postNo}`}>
+    <article
+      ref={slideRef}
+      className="feedSlide"
+      data-feed-index={index}
+      aria-label={`Post #${item.postNo}`}
+      onPointerMove={media.kind === "video" ? revealPlayer : undefined}
+    >
       <div className="mediaFrame">
         {!shouldLoadMedia ? (
           <div className="mediaPlaceholder">
@@ -334,7 +378,12 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
       </div>
 
       {media.kind === "video" && shouldLoadMedia ? (
-        <div className="mediaPlayer" onClick={(event) => event.stopPropagation()}>
+        <div
+          className="mediaPlayer"
+          data-visible={isPlayerVisible || isUserPaused || playbackState !== "playing"}
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={revealPlayer}
+        >
           <div className="mediaPlayerRow">
             <button className="playerButton" type="button" onClick={togglePlayPause}>
               {playbackState === "playing" && !isUserPaused ? "Pause" : "Play"}
