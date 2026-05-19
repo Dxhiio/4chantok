@@ -29,7 +29,7 @@ export default function HomePage() {
   }, [currentBoard, currentThread]);
 
   return (
-    <main className="appShell" data-mobile-stage={mobileStage}>
+    <main className="appShell" data-mobile-stage={mobileStage} data-viewer-active={Boolean(currentThread)}>
       <aside className="sidebar" aria-label="Boards">
         <header className="brandBlock">
           <p className="eyebrow">4chan media explorer</p>

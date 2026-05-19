@@ -26,8 +26,10 @@ function formatTime(seconds: number) {
 export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
   const slideRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [muted, setMuted] = useState(true);
-  const [volume, setVolume] = useState(1);
+  const singleTapTimerRef = useRef<number | null>(null);
+  const lastTapRef = useRef<{ at: number; side: "left" | "right" } | null>(null);
+  const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(0.1);
   const [isUserPaused, setIsUserPaused] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -39,7 +41,7 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
 
   const primeVideoForAutoplay = useCallback(
     (video: HTMLVideoElement, nextMuted = muted, nextVolume = volume) => {
-      video.defaultMuted = true;
+      video.defaultMuted = nextMuted;
       video.muted = nextMuted;
       video.volume = nextVolume;
       video.playsInline = true;
@@ -132,6 +134,14 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
     }
   }, [shouldPlay]);
 
+  useEffect(() => {
+    return () => {
+      if (singleTapTimerRef.current !== null) {
+        window.clearTimeout(singleTapTimerRef.current);
+      }
+    };
+  }, []);
+
   const togglePlayPause = useCallback(() => {
     const video = videoRef.current;
     if (!video || media?.kind !== "video") return;
@@ -204,6 +214,52 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
     [duration],
   );
 
+  const seekBy = useCallback(
+    (deltaSeconds: number) => {
+      const video = videoRef.current;
+      if (!video || !Number.isFinite(duration) || duration <= 0) return;
+
+      handleSeek(video.currentTime + deltaSeconds);
+    },
+    [duration, handleSeek],
+  );
+
+  const handleVideoTap = useCallback(
+    (event: React.PointerEvent<HTMLVideoElement>) => {
+      const video = videoRef.current;
+      if (!video || media?.kind !== "video") return;
+
+      const rect = event.currentTarget.getBoundingClientRect();
+      const side = event.clientX < rect.left + rect.width / 2 ? "left" : "right";
+      const now = window.performance.now();
+      const previousTap = lastTapRef.current;
+      const isDoubleTap = Boolean(previousTap && previousTap.side === side && now - previousTap.at <= 280);
+
+      if (isDoubleTap) {
+        if (singleTapTimerRef.current !== null) {
+          window.clearTimeout(singleTapTimerRef.current);
+          singleTapTimerRef.current = null;
+        }
+
+        lastTapRef.current = null;
+        seekBy(side === "left" ? -5 : 5);
+        return;
+      }
+
+      lastTapRef.current = { at: now, side };
+
+      if (singleTapTimerRef.current !== null) {
+        window.clearTimeout(singleTapTimerRef.current);
+      }
+
+      singleTapTimerRef.current = window.setTimeout(() => {
+        togglePlayPause();
+        singleTapTimerRef.current = null;
+      }, 285);
+    },
+    [media?.kind, seekBy, togglePlayPause],
+  );
+
   if (!media) return null;
 
   const caption = item.comment || media.filename;
@@ -240,7 +296,7 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
               setPlaybackState("idle");
             }}
             onError={() => setPlaybackState("error")}
-            onClick={togglePlayPause}
+            onPointerUp={handleVideoTap}
           />
         ) : media.kind === "gif" ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -309,7 +365,7 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
               min={0}
               max={1}
               step="0.05"
-              value={muted ? 0 : volume}
+              value={volume}
               aria-label="Video volume"
               onChange={(event) => handleVolumeChange(Number(event.currentTarget.value))}
             />
