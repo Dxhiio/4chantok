@@ -627,3 +627,27 @@ button { cursor: pointer; }
     cursor: not-allowed;
   }
 }
+
+.desktopBackButton {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 30;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  padding: 0.6rem 1.1rem;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(12px);
+  font-weight: 800;
+  font-size: 0.85rem;
+  transition: background 180ms ease;
+}
+.desktopBackButton:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+@media (max-width: 880px) {
+  .desktopBackButton {
+    display: none;
+  }
+}

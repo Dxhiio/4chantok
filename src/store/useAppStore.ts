@@ -12,7 +12,7 @@ type AppState = {
   showTextOnlyMessages: boolean;
   threadPosts: FourChanPost[];
   setCurrentBoard: (board: FourChanBoard) => void;
-  setCurrentThread: (thread: CurrentThread) => void;
+  setCurrentThread: (thread: CurrentThread | null) => void;
   setShowTextOnlyMessages: (value: boolean) => void;
   setThreadPosts: (posts: FourChanPost[]) => void;
 };

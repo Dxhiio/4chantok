@@ -4,11 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { MediaSlide } from "./MediaSlide";
 import { TextSlide } from "./TextSlide";
 import { useFeedItems } from "@/features/feed/useFeedItems";
+import { useAppStore } from "@/store/useAppStore";
 
 export function TikTokScroller() {
   const items = useFeedItems();
+  const setCurrentThread = useAppStore((state) => state.setCurrentThread);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
   const syncActiveIndex = useCallback(() => {
@@ -62,19 +65,53 @@ export function TikTokScroller() {
     };
   }, []);
 
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      time: Date.now()
+    };
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+
+    const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
+    const deltaY = e.changedTouches[0].clientY - touchStartRef.current.y;
+    const deltaTime = Date.now() - touchStartRef.current.time;
+
+    // Fast horizontal swipe to the right
+    if (deltaX > 60 && Math.abs(deltaY) < 40 && deltaTime < 400) {
+      setCurrentThread(null);
+    }
+    touchStartRef.current = null;
+  }, [setCurrentThread]);
+
   if (items.length === 0) {
     return <div className="emptyState">Select a media thread or enable text-only posts.</div>;
   }
 
   return (
-    <div ref={scrollerRef} className="feedScroller" aria-label="Vertical post feed" onScroll={handleScroll}>
-      {items.map((item, index) =>
-        item.media ? (
-          <MediaSlide key={item.id} item={item} index={index} isActive={index === activeIndex} />
-        ) : (
-          <TextSlide key={item.id} item={item} index={index} />
-        ),
-      )}
-    </div>
+    <>
+      <button className="desktopBackButton" type="button" onClick={() => setCurrentThread(null)}>
+        &larr; Back to Threads
+      </button>
+      <div 
+        ref={scrollerRef} 
+        className="feedScroller" 
+        aria-label="Vertical post feed" 
+        onScroll={handleScroll}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {items.map((item, index) =>
+          item.media ? (
+            <MediaSlide key={item.id} item={item} index={index} isActive={index === activeIndex} />
+          ) : (
+            <TextSlide key={item.id} item={item} index={index} />
+          ),
+        )}
+      </div>
+    </>
   );
 }
