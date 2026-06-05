@@ -237,6 +237,27 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
     [attemptPlayback, revealPlayer],
   );
 
+  const toggleFullScreen = useCallback(async () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        if (video.requestFullscreen) {
+          await video.requestFullscreen();
+        } else if ((video as any).webkitEnterFullscreen) {
+          (video as any).webkitEnterFullscreen();
+        } else if ((video as any).webkitRequestFullscreen) {
+          await (video as any).webkitRequestFullscreen();
+        }
+      }
+    } catch (err) {
+      console.error("Failed to toggle fullscreen", err);
+    }
+  }, []);
+
   const handleSeek = useCallback(
     (nextTime: number) => {
       const video = videoRef.current;
@@ -393,6 +414,9 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
             </span>
             <button className="playerButton" type="button" onClick={toggleMute}>
               {muted ? "Muted" : "Sound"}
+            </button>
+            <button className="playerButton" type="button" onClick={toggleFullScreen}>
+              Full
             </button>
           </div>
 
