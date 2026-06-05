@@ -177,10 +177,8 @@ button { cursor: pointer; }
   display: grid;
   place-items: center;
 }
-@media (orientation: landscape) {
-  .mediaFrame {
-    padding: 0 16%;
-  }
+.mediaFrame[data-orientation="horizontal"] {
+  padding: 0 16%;
 }
 .mediaFrame img,
 .mediaFrame video {
@@ -354,10 +352,8 @@ button { cursor: pointer; }
   margin: 0 auto;
   background: #000;
 }
-@media (orientation: landscape) {
-  .appShell[data-viewer-active="true"] .mediaFrame {
-    padding: 0 16%;
-  }
+.appShell[data-viewer-active="true"] .mediaFrame[data-orientation="horizontal"] {
+  padding: 0 16%;
 }
 
 .appShell[data-viewer-active="true"] .mediaFrame img,

@@ -322,6 +322,7 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
   if (!media) return null;
 
   const caption = item.comment || media.filename;
+  const isHorizontal = media.width && media.height ? media.width > media.height : false;
 
   return (
     <article
@@ -331,7 +332,7 @@ export function MediaSlide({ item, index, isActive }: MediaSlideProps) {
       aria-label={`Post #${item.postNo}`}
       onPointerMove={media.kind === "video" ? revealPlayer : undefined}
     >
-      <div className="mediaFrame">
+      <div className="mediaFrame" data-orientation={isHorizontal ? "horizontal" : "vertical"}>
         {!shouldLoadMedia ? (
           <div className="mediaPlaceholder">
             <span className="badge">{media.kind.toUpperCase()}</span>
