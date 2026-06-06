@@ -165,7 +165,6 @@ button { cursor: pointer; }
   display: grid;
   place-items: center;
   height: calc(100vh - 4.25rem);
-  min-height: 36rem;
   scroll-snap-align: start;
   scroll-snap-stop: always;
   overflow: hidden;
@@ -174,6 +173,8 @@ button { cursor: pointer; }
 .mediaFrame {
   width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
   display: grid;
   place-items: center;
 }
